@@ -6,7 +6,7 @@
         ctx.strokeStyle = "gray";
         ctx.textBaseline = "middle";
         
-        blockSize = Math.min(ctx.canvas.height/20, ctx.canvas.width/10);
+        blockSize = Math.min(ctx.canvas.height/20, ctx.canvas.width/17);
         blockSize = Math.floor(blockSize);
 
         ctx.font = (blockSize*0.75)+"px monospace";
@@ -65,7 +65,7 @@
         }
         
         ctx.save();
-        ctx.translate(12 * blockSize, 14 * blockSize);
+        ctx.translate(12 * blockSize, (18-game.switchPiece.length) * blockSize);
         drawGrid(game.switchPiece, 0, true);
         ctx.restore();
                 
@@ -261,8 +261,33 @@
         }
     }
     
+    
+    
     function getNewPiece() {
-        return PIECES[Math.floor(Math.random()*PIECES.length)];
+        if (!game.nextPieces.length) {
+            var list = function (array) { // shuffle
+                var currentIndex = array.length, temp, randomIndex;
+
+                while (0 !== currentIndex) {
+                    randomIndex = Math.floor(Math.random() * currentIndex);
+                    currentIndex--;
+
+                    temp = array[currentIndex];
+                    array[currentIndex] = array[randomIndex];
+                    array[randomIndex] = temp;
+                }
+
+                return array;
+            }([0,1,2,3,4,5,6]);
+            
+            console.log(list);
+            
+            for (var i = 0; i < list.length; i++) {
+                game.nextPieces[i] = PIECES[list[i]];
+            }
+        }
+        
+        return game.nextPieces.pop();
     }
     
     function nextPiece() {
@@ -332,10 +357,6 @@
         game.over = true;
         game.pause = true;
         draw();
-        
-        setTimeout(function() {
-            if (game.over) startGame();
-        }, 5000);
     }
     
     function startGame() {
@@ -362,7 +383,8 @@
             [8,8,0,0,0,0,0,0,0,0,0,0,8,8],
             [8,8,8,8,8,8,8,8,8,8,8,8,8,8],
             [8,8,8,8,8,8,8,8,8,8,8,8,8,8]];
-            
+        
+        game.nextPieces = [];
         game.nextPiece = getNewPiece();
         game.switchPiece = getNewPiece();
         nextPiece();
@@ -397,6 +419,7 @@
         pieceY: 5,
         nextPiece: null,
         switchPiece: null,
+        nextPieces: null,
         canSwitch: false,
         pause: false,
         over: false,
