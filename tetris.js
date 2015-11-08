@@ -45,7 +45,7 @@
         ctx.restore();
         
         ctx.save();
-        ctx.translate(12 * game.blockSize, 3 * game.blockSize);
+        ctx.translate(12 * game.blockSize, 2 * game.blockSize);
         drawGrid(game.nextPiece, 0, true);
         ctx.restore();
         
@@ -148,7 +148,6 @@
     
     function hardDrop() {
         while (!softDrop());
-        // TODO: Improve this function, maybe??
     }
     
     function softDrop() {
@@ -176,7 +175,9 @@
     }
     
     function deleteFullLines(top, length) {
-        for (var i = top; i < top+length; i++) {
+        var end = Math.min(top+length, game.board.length-2);
+        
+        for (var i = top; i < end; i++) {
             var flag = true;
             
             for (var j = 2; j < 12 && flag; j++) {
@@ -184,10 +185,8 @@
             }
             
             if (flag) { // delete line
-                console.log("DELETE!");
-            
                 for (var j = i; j > 0; j--) {
-                    game.board[j] = game.board[j-1];
+                    game.board[j] = Array.apply(undefined, game.board[j-1]);
                 }
                 game.board[0] = EMPTYBOARD[0];
                 game.lines++;
