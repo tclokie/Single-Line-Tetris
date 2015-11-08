@@ -280,8 +280,6 @@
                 return array;
             }([0,1,2,3,4,5,6]);
             
-            console.log(list);
-            
             for (var i = 0; i < list.length; i++) {
                 game.nextPieces[i] = PIECES[list[i]];
             }
