@@ -4,26 +4,29 @@
         ctx.canvas.width = window.innerWidth;
         
         ctx.strokeStyle = "gray";
+        ctx.textBaseline = "middle";
         
-        game.blockSize = Math.min(ctx.canvas.height/20, ctx.canvas.width/10);
-        game.blockSize = Math.floor(game.blockSize);
+        blockSize = Math.min(ctx.canvas.height/20, ctx.canvas.width/10);
+        blockSize = Math.floor(blockSize);
+
+        ctx.font = (blockSize*0.75)+"px monospace";
     }
     
     function drawBlock (x, y) {
         ctx.beginPath();
-        ctx.rect(x*game.blockSize, y*game.blockSize, game.blockSize, game.blockSize);
+        ctx.rect(x*blockSize, y*blockSize, blockSize, blockSize);
         ctx.fill();
         ctx.stroke();
     }
     
-    function drawGrid (grid, buffer, drawEmpty) {
-        buffer = buffer || 0;
+    function drawGrid (grid, border, drawEmpty) {
+        border = border || 0;
         
-        for (var i = buffer; i < grid.length - buffer; i++) {
-            for (var j = buffer; j < grid[i].length - buffer; j++) {
+        for (var i = 0; i < grid.length - border; i++) {
+            for (var j = border; j < grid[i].length - border; j++) {
                 if (drawEmpty || grid[i][j]) {
                     ctx.fillStyle = COLOURS[grid[i][j]];
-                    drawBlock(j - buffer, i - buffer);
+                    drawBlock(j - border, i);
                 }
             }
         }
@@ -40,28 +43,49 @@
         drawGrid(game.board, 2, true);
         
         ctx.save();
-        ctx.translate((game.pieceX-2) * game.blockSize, (game.pieceY-2) * game.blockSize);
+        ctx.translate((game.pieceX-2) * blockSize, (game.pieceY) * blockSize);
         drawGrid(game.currentPiece);
         ctx.restore();
         
         ctx.save();
-        ctx.translate(12 * game.blockSize, 2 * game.blockSize);
+        ctx.translate(12 * blockSize, 2 * blockSize);
         drawGrid(game.nextPiece, 0, true);
         ctx.restore();
         
-        var ghostDistance = 0;
-        while (!checkCollision(game.currentPiece, game.pieceX, game.pieceY+ghostDistance+1)) ghostDistance++;
-        if (ghostDistance) {
-            ctx.save();
-            ctx.globalAlpha *= 0.5;
-            ctx.translate((game.pieceX-2) * game.blockSize, (game.pieceY+ghostDistance-2) * game.blockSize);
-            drawGrid(game.currentPiece);
-            ctx.restore();
+        if (!game.pause) {
+            var ghostDistance = 0;
+            while (!checkCollision(game.currentPiece, game.pieceX, game.pieceY+ghostDistance+1)) ghostDistance++;
+            if (ghostDistance) {
+                ctx.save();
+                ctx.globalAlpha *= 0.5;
+                ctx.translate((game.pieceX-2) * blockSize, (game.pieceY+ghostDistance) * blockSize);
+                drawGrid(game.currentPiece);
+                ctx.restore();
+            }
         }
         
+        ctx.save();
+        ctx.translate(12 * blockSize, 14 * blockSize);
+        drawGrid(game.switchPiece, 0, true);
         ctx.restore();
-
-        ctx.fillText("Lines: "+game.lines, 12.5 * game.blockSize, 9 * game.blockSize);
+                
+        ctx.restore();
+        
+        ctx.fillStyle = (game.pause && !game.over) ? "#666" : "#000";
+        ctx.fillText("Lines: "+game.lines, 12 * blockSize, 10 * blockSize);
+        
+        if (game.over) {
+            ctx.save();
+            ctx.strokeStyle = "#F00";
+            ctx.lineWidth = 2;
+            ctx.font = "bold "+(blockSize*3)+"px monospace";
+            ctx.textAlign = "center";
+            ctx.fillText("GAME", 5*blockSize, 7.5*blockSize);
+            ctx.strokeText("GAME", 5*blockSize, 7.5*blockSize);
+            ctx.fillText("OVER", 5*blockSize, 13*blockSize);
+            ctx.strokeText("OVER", 5*blockSize, 13*blockSize);
+            ctx.restore();
+        }
     }
     
     function transpose (piece) {
@@ -146,6 +170,8 @@
     }
     
     function softDrop() {
+        game.counter = 0;
+        
         var collisionHappened = checkCollision(game.currentPiece, game.pieceX, game.pieceY+1);
 
         if (collisionHappened) {
@@ -157,14 +183,9 @@
             
             deleteFullLines(game.pieceY, game.currentPiece.length);
             
-            game.currentPiece = game.nextPiece;
-            game.nextPiece = getNewPiece();
+            nextPiece();
             
-            if (checkCollision(game.currentPiece, game.pieceX, game.pieceY)) {
-                console.log("GAME OVER");
-                console.log("You cleared "+game.lines+" lines.");
-                startGame();
-            }
+            if (checkCollision(game.currentPiece, game.pieceX, game.pieceY)) gameOver();
         }
         else {
             game.pieceY++;
@@ -178,6 +199,8 @@
     function deleteFullLines(top, length) {
         var end = Math.min(top+length, game.board.length-2);
         
+        var linesDeleted = 0;
+        
         for (var i = top; i < end; i++) {
             var flag = true;
             
@@ -189,9 +212,26 @@
                 for (var j = i; j > 0; j--) {
                     game.board[j] = Array.apply(undefined, game.board[j-1]);
                 }
-                game.board[0] = [2,2,0,0,0,0,0,0,0,0,0,0,2,2];
+                game.board[0] = [8,8,0,0,0,0,0,0,0,0,0,0,8,8];
                 game.lines++;
+                linesDeleted++;
             }
+        }
+        
+        switch (linesDeleted) {
+            case 0: break;
+            case 1:
+                game.speed *= 0.95;
+                break;
+            case 2:
+                game.speed *= 0.9;
+                break;
+            case 3:
+                game.speed *= 0.8;
+                break;
+            case 4:
+                game.speed *= 0.7;
+                break;
         }
     }
     
@@ -207,20 +247,39 @@
         return flag;
     }
     
+    function switchPiece() {
+        if (game.canSwitch && !checkCollision(game.switchPiece, 5, 2)) {
+            game.canSwitch = false;
+            game.pieceX = 5;
+            game.pieceY = 0;
+            
+            var swap = game.currentPiece;
+            game.currentPiece = game.switchPiece;
+            game.switchPiece = swap;
+            
+            draw();
+        }
+    }
+    
     function getNewPiece() {
-        game.pieceX = 5;
-        game.pieceY = 2;
         return PIECES[Math.floor(Math.random()*PIECES.length)];
+    }
+    
+    function nextPiece() {
+        game.pieceX = 5;
+        game.pieceY = 0;
+        game.canSwitch = true;
+        game.currentPiece = game.nextPiece;
+        game.nextPiece = getNewPiece();
     }
     
     function tick () {
         if (game.pause) return;
         
-        if (game.counter < 75*Math.pow(0.8, game.lines/8)){
+        if (game.counter < game.speed){
             game.counter++;
         }
         else {
-            game.counter = 0;
             softDrop();
         }
     }
@@ -230,39 +289,53 @@
             var keyCode = event.keyCode || event.which || 0;
             
             switch (keyCode) {
-                case 13:
-                    console.log("ENTER");
+                case 13: // enter
+                    if (game.over) startGame();
                     break;
-                case 16:
-                    console.log("SHIFT");
+                case 16: // shift
+                    if (!game.pause) switchPiece();
                     break;
-                case 27:
-                    console.log("ESCAPE");
-                    break;
-                case 32:
+                case 32: // space
                     if (!game.pause) hardDrop();
                     break;
-                case 37:
+                case 37: // left
                     if (!game.pause) moveLeft();
                     break;
-                case 38:
+                case 38: // up
                     if (!game.pause) rotateCW();
                     break;
-                case 39:
+                case 39: // right
                     if (!game.pause) moveRight();
                     break;
-                case 40:
+                case 40: // down
                     if (!game.pause) softDrop();
                     break;
-                case 80:
-                    game.pause = !game.pause;
-                    draw();
+                case 80: // p
+                    if (!game.over) {
+                        game.pause = !game.pause;
+                        draw();
+                    }
                     break;
-                case 81:
-                    console.log("Q");
+                case 81: // q
+                    if (game.pause) gameOver();
                     break;
             }
         };
+        
+        window.onresize = function(){
+            resetCanvas();
+            draw();
+        };
+    }
+    
+    function gameOver() {
+        game.over = true;
+        game.pause = true;
+        draw();
+        
+        setTimeout(function() {
+            if (game.over) startGame();
+        }, 5000);
     }
     
     function startGame() {
@@ -287,15 +360,20 @@
             [8,8,0,0,0,0,0,0,0,0,0,0,8,8],
             [8,8,0,0,0,0,0,0,0,0,0,0,8,8],
             [8,8,0,0,0,0,0,0,0,0,0,0,8,8],
-            [8,8,0,0,0,0,0,0,0,0,0,0,8,8],
-            [8,8,0,0,0,0,0,0,0,0,0,0,8,8],
             [8,8,8,8,8,8,8,8,8,8,8,8,8,8],
             [8,8,8,8,8,8,8,8,8,8,8,8,8,8]];
             
-        game.currentPiece = getNewPiece();
         game.nextPiece = getNewPiece();
+        game.switchPiece = getNewPiece();
+        nextPiece();
+        
         game.lines = 0;
+        game.speed = 75;
         game.counter = 0;
+        game.pause = false;
+        game.over = false;
+        
+        draw();
     }
 
     function init () {
@@ -303,31 +381,27 @@
         
         startGame();
         
-        draw();
-        
-        window.onresize = function(){
-            resetCanvas();
-            draw();
-        };
-        
         initListeners();
         
         setInterval(tick, 20);
     }
 
     var ctx = document.getElementsByTagName("canvas")[0].getContext("2d");
+    var blockSize = 0;
 
     var game = {
         counter: 0,
         board: null,
-        blockSize: 0,
         currentPiece: null,
-        pieceX: 2,
-        pieceY: 2,
+        pieceX: 0,
+        pieceY: 5,
         nextPiece: null,
         switchPiece: null,
+        canSwitch: false,
         pause: false,
-        lines: 0
+        over: false,
+        lines: 0,
+        speed: 0
     };
     
     const COLOURS = ["#111", "#F00", "#00F", "#0F0", "#0FF", "#F0F", "#FF0", "orangered", "#CCC"];
