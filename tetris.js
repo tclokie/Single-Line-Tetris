@@ -210,7 +210,7 @@
             
             if (flag) { // delete line
                 for (var j = i; j > 0; j--) {
-                    game.board[j] = Array.apply(undefined, game.board[j-1]);
+                    game.board[j] = game.board[j-1].slice(0);
                 }
                 game.board[0] = [8,8,0,0,0,0,0,0,0,0,0,0,8,8];
                 game.lines++;
