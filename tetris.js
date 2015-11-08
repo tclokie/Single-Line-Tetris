@@ -16,14 +16,15 @@
         ctx.stroke();
     }
     
-    function drawGrid (grid, buffer) {
-        if (!grid) return;
+    function drawGrid (grid, buffer, drawEmpty) {
         buffer = buffer || 0;
         
         for (var i = buffer; i < grid.length - buffer; i++) {
             for (var j = buffer; j < grid[i].length - buffer; j++) {
-                ctx.fillStyle = COLOURS[grid[i][j]];
-                drawBlock(j - buffer, i - buffer);
+                if (drawEmpty || grid[i][j]) {
+                    ctx.fillStyle = COLOURS[grid[i][j]];
+                    drawBlock(j - buffer, i - buffer);
+                }
             }
         }
     }
@@ -34,12 +35,234 @@
         
         ctx.save();
         
-        drawGrid(game.board, 2);
+        if (game.pause) ctx.globalAlpha = 0.5;
         
-        ctx.translate(game.pieceX * game.blockSize, game.pieceY * game.blockSize);
+        drawGrid(game.board, 2, true);
+        
+        ctx.save();
+        ctx.translate((game.pieceX-2) * game.blockSize, (game.pieceY-2) * game.blockSize);
         drawGrid(game.currentPiece);
-
         ctx.restore();
+        
+        ctx.save();
+        ctx.translate(12 * game.blockSize, 3 * game.blockSize);
+        drawGrid(game.nextPiece, 0, true);
+        ctx.restore();
+        
+        ctx.restore();
+    }
+    
+    function transpose (piece) {
+        var newPiece = [];
+    
+        for (var i = 0; i < piece[0].length; i++) {
+            var newLine = [];
+            
+            for (var j = 0; j < piece.length; j++) {
+                newLine.push(piece[j][i]);
+            }
+            
+            newPiece[i] = newLine;
+        }
+        return newPiece;
+    }
+    function reverseRows (piece) {
+        var newPiece = [];
+        
+        for (var i = 0; i < piece.length; i++) {
+            newPiece[i] = [];
+            
+            for (var j = 0; j < piece[i].length; j++) {
+                newPiece[i][j] = piece[i][piece[i].length-j-1];
+            }
+        }
+        return newPiece;
+    }
+    function rotateCW () {
+        var newPiece = reverseRows(transpose(game.currentPiece));
+        if (!checkCollision(newPiece, game.pieceX, game.pieceY)) {
+            game.currentPiece = newPiece;
+            draw();
+        }
+        else { // Kick it
+            if (!checkCollision(newPiece, game.pieceX+1, game.pieceY)) {
+                game.currentPiece = newPiece;
+                game.pieceX++;
+                draw();
+            }
+            else if (!checkCollision(newPiece, game.pieceX-1, game.pieceY)) {
+                game.currentPiece = newPiece;
+                game.pieceX--;
+                draw();
+            }
+            else if (!checkCollision(newPiece, game.pieceX, game.pieceY+1)) {
+                game.currentPiece = newPiece;
+                game.pieceY++;
+                draw();
+            }
+            else if (!checkCollision(newPiece, game.pieceX+1, game.pieceY+1)) {
+                game.currentPiece = newPiece;
+                game.pieceX++;
+                game.pieceY++;
+                draw();
+            }
+            else if (!checkCollision(newPiece, game.pieceX-1, game.pieceY+1)) {
+                game.currentPiece = newPiece;
+                game.pieceX--;
+                game.pieceY++;
+                draw();
+            }
+            /*else if (!checkCollision(newPiece, game.pieceX, game.pieceY-1)) {
+                game.currentPiece = newPiece;
+                game.pieceY--;
+                draw();
+            }
+            else if (!checkCollision(newPiece, game.pieceX+1, game.pieceY-1)) {
+                game.currentPiece = newPiece;
+                game.pieceX++;
+                game.pieceY--;
+                draw();
+            }
+            else if (!checkCollision(newPiece, game.pieceX-1, game.pieceY-1)) {
+                game.currentPiece = newPiece;
+                game.pieceX--;
+                game.pieceY--;
+                draw();
+            }*/
+        }
+    }
+    
+    function moveLeft() {
+        if (!checkCollision(game.currentPiece, game.pieceX-1, game.pieceY)) {
+            game.pieceX--;
+            draw();
+        }
+    }
+    
+    function moveRight() {
+        if (!checkCollision(game.currentPiece, game.pieceX+1, game.pieceY)) {
+            game.pieceX++;
+            draw();
+        }
+    }
+    
+    function hardDrop() {
+        while (!softDrop());
+        // TODO: Improve this function, maybe??
+    }
+    
+    function softDrop() {
+        var collisionHappened = checkCollision(game.currentPiece, game.pieceX, game.pieceY+1);
+
+        if (collisionHappened) {
+            for (var i = 0; i < game.currentPiece.length; i++) {
+                for (var j = 0; j < game.currentPiece[i].length; j++) {
+                    if (game.currentPiece[i][j]) game.board[i+game.pieceY][j+game.pieceX] = game.currentPiece[i][j];
+                }
+            }
+            
+            deleteFullLines(game.pieceY, game.currentPiece.length);
+            
+            game.currentPiece = game.nextPiece;
+            game.nextPiece = getNewPiece();
+        }
+        else {
+            game.pieceY++;
+        }
+        
+        draw();
+        
+        return collisionHappened;
+    }
+    
+    function deleteFullLines(top, length) {
+        for (var i = top; i < top+length; i++) {
+            var flag = true;
+            
+            for (var j = 2; j < 12 && flag; j++) {
+                flag = (game.board[i][j] > 0 && game.board[i][j] < 8);
+            }
+            
+            if (flag) { // delete line
+                console.log("DELETE!");
+            
+                for (var j = i; j > 0; j--) {
+                    game.board[j] = game.board[j-1];
+                }
+                game.board[0] = EMPTYBOARD[0];
+                game.lines++;
+            }
+        }
+    }
+    
+    function checkCollision(piece, x, y) {
+        var flag = false;
+        
+        for (var i = 0; i < piece.length; i++) {
+            for (var j = 0; j < piece[i].length; j++) {
+                flag = flag || (piece[i][j] && game.board[i+y][j+x]);
+            }
+        }
+        
+        return flag;
+    }
+    
+    function getNewPiece() {
+        game.pieceX = 5;
+        game.pieceY = 2;
+        return PIECES[Math.floor(Math.random()*PIECES.length)];
+    }
+    
+    function tick () {
+        if (game.pause) return;
+        
+        if (game.counter < 75*Math.pow(0.8, game.lines/8)){
+            game.counter++;
+        }
+        else {
+            game.counter = 0;
+            softDrop();
+        }
+    }
+    
+    function initListeners () {
+        window.onkeydown = function(event){
+            var keyCode = event.keyCode || event.which || 0;
+            
+            switch (keyCode) {
+                case 13:
+                    console.log("ENTER");
+                    break;
+                case 16:
+                    console.log("SHIFT");
+                    break;
+                case 27:
+                    console.log("ESCAPE");
+                    break;
+                case 32:
+                    if (!game.pause) hardDrop();
+                    break;
+                case 37:
+                    if (!game.pause) moveLeft();
+                    break;
+                case 38:
+                    if (!game.pause) rotateCW();
+                    break;
+                case 39:
+                    if (!game.pause) moveRight();
+                    break;
+                case 40:
+                    if (!game.pause) softDrop();
+                    break;
+                case 80:
+                    game.pause = !game.pause;
+                    draw();
+                    break;
+                case 81:
+                    console.log("Q");
+                    break;
+            }
+        };
     }
 
     function init () {
@@ -47,20 +270,25 @@
         
         game.board = EMPTYBOARD;
             
-        game.currentPiece = PIECES[2];
+        game.currentPiece = getNewPiece();
+        game.nextPiece = getNewPiece();
         
         draw();
-        //setInterval(draw, 10);
         
         window.onresize = function(){
             resetCanvas();
             draw();
         };
+        
+        initListeners();
+        
+        setInterval(tick, 20);
     }
 
     var ctx = document.getElementsByTagName("canvas")[0].getContext("2d");
 
     var game = {
+        counter: 0,
         board: null,
         blockSize: 0,
         currentPiece: null,
@@ -92,8 +320,10 @@
             [0,0,0]
         ],
         [ // O
-            [6,6],
-            [6,6]
+            [0,0,0,0],
+            [0,6,6,0],
+            [0,6,6,0],
+            [0,0,0,0]
         ],
         [ // S
             [0,3,3],
