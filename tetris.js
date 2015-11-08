@@ -49,7 +49,19 @@
         drawGrid(game.nextPiece, 0, true);
         ctx.restore();
         
+        var ghostDistance = 0;
+        while (!checkCollision(game.currentPiece, game.pieceX, game.pieceY+ghostDistance+1)) ghostDistance++;
+        if (ghostDistance) {
+            ctx.save();
+            ctx.globalAlpha *= 0.5;
+            ctx.translate((game.pieceX-2) * game.blockSize, (game.pieceY+ghostDistance-2) * game.blockSize);
+            drawGrid(game.currentPiece);
+            ctx.restore();
+        }
+        
         ctx.restore();
+
+        ctx.fillText("Lines: "+game.lines, 12.5 * game.blockSize, 9 * game.blockSize);
     }
     
     function transpose (piece) {
@@ -85,7 +97,12 @@
             draw();
         }
         else { // Kick it
-            if (!checkCollision(newPiece, game.pieceX+1, game.pieceY)) {
+            if (!checkCollision(newPiece, game.pieceX, game.pieceY+1)) {
+                game.currentPiece = newPiece;
+                game.pieceY++;
+                draw();
+            }
+            else if (!checkCollision(newPiece, game.pieceX+1, game.pieceY)) {
                 game.currentPiece = newPiece;
                 game.pieceX++;
                 draw();
@@ -93,11 +110,6 @@
             else if (!checkCollision(newPiece, game.pieceX-1, game.pieceY)) {
                 game.currentPiece = newPiece;
                 game.pieceX--;
-                draw();
-            }
-            else if (!checkCollision(newPiece, game.pieceX, game.pieceY+1)) {
-                game.currentPiece = newPiece;
-                game.pieceY++;
                 draw();
             }
             else if (!checkCollision(newPiece, game.pieceX+1, game.pieceY+1)) {
@@ -112,23 +124,6 @@
                 game.pieceY++;
                 draw();
             }
-            /*else if (!checkCollision(newPiece, game.pieceX, game.pieceY-1)) {
-                game.currentPiece = newPiece;
-                game.pieceY--;
-                draw();
-            }
-            else if (!checkCollision(newPiece, game.pieceX+1, game.pieceY-1)) {
-                game.currentPiece = newPiece;
-                game.pieceX++;
-                game.pieceY--;
-                draw();
-            }
-            else if (!checkCollision(newPiece, game.pieceX-1, game.pieceY-1)) {
-                game.currentPiece = newPiece;
-                game.pieceX--;
-                game.pieceY--;
-                draw();
-            }*/
         }
     }
     
@@ -164,6 +159,12 @@
             
             game.currentPiece = game.nextPiece;
             game.nextPiece = getNewPiece();
+            
+            if (checkCollision(game.currentPiece, game.pieceX, game.pieceY)) {
+                console.log("GAME OVER");
+                console.log("You cleared "+game.lines+" lines.");
+                startGame();
+            }
         }
         else {
             game.pieceY++;
@@ -188,7 +189,7 @@
                 for (var j = i; j > 0; j--) {
                     game.board[j] = Array.apply(undefined, game.board[j-1]);
                 }
-                game.board[0] = EMPTYBOARD[0];
+                game.board[0] = [2,2,0,0,0,0,0,0,0,0,0,0,2,2];
                 game.lines++;
             }
         }
@@ -263,14 +264,44 @@
             }
         };
     }
+    
+    function startGame() {
+        game.board = [
+            [8,8,0,0,0,0,0,0,0,0,0,0,8,8],
+            [8,8,0,0,0,0,0,0,0,0,0,0,8,8],
+            [8,8,0,0,0,0,0,0,0,0,0,0,8,8],
+            [8,8,0,0,0,0,0,0,0,0,0,0,8,8],
+            [8,8,0,0,0,0,0,0,0,0,0,0,8,8],
+            [8,8,0,0,0,0,0,0,0,0,0,0,8,8],
+            [8,8,0,0,0,0,0,0,0,0,0,0,8,8],
+            [8,8,0,0,0,0,0,0,0,0,0,0,8,8],
+            [8,8,0,0,0,0,0,0,0,0,0,0,8,8],
+            [8,8,0,0,0,0,0,0,0,0,0,0,8,8],
+            [8,8,0,0,0,0,0,0,0,0,0,0,8,8],
+            [8,8,0,0,0,0,0,0,0,0,0,0,8,8],
+            [8,8,0,0,0,0,0,0,0,0,0,0,8,8],
+            [8,8,0,0,0,0,0,0,0,0,0,0,8,8],
+            [8,8,0,0,0,0,0,0,0,0,0,0,8,8],
+            [8,8,0,0,0,0,0,0,0,0,0,0,8,8],
+            [8,8,0,0,0,0,0,0,0,0,0,0,8,8],
+            [8,8,0,0,0,0,0,0,0,0,0,0,8,8],
+            [8,8,0,0,0,0,0,0,0,0,0,0,8,8],
+            [8,8,0,0,0,0,0,0,0,0,0,0,8,8],
+            [8,8,0,0,0,0,0,0,0,0,0,0,8,8],
+            [8,8,0,0,0,0,0,0,0,0,0,0,8,8],
+            [8,8,8,8,8,8,8,8,8,8,8,8,8,8],
+            [8,8,8,8,8,8,8,8,8,8,8,8,8,8]];
+            
+        game.currentPiece = getNewPiece();
+        game.nextPiece = getNewPiece();
+        game.lines = 0;
+        game.counter = 0;
+    }
 
     function init () {
         resetCanvas();
         
-        game.board = EMPTYBOARD;
-            
-        game.currentPiece = getNewPiece();
-        game.nextPiece = getNewPiece();
+        startGame();
         
         draw();
         
@@ -299,13 +330,13 @@
         lines: 0
     };
     
-    const COLOURS = ["black", "red", "blue", "green", "cyan", "magenta", "yellow", "orangered", "gray"];
+    const COLOURS = ["#111", "#F00", "#00F", "#0F0", "#0FF", "#F0F", "#FF0", "orangered", "#CCC"];
 
     const PIECES = [
         [ // I
             [0,0,0,0],
-            [0,0,0,0],
             [4,4,4,4],
+            [0,0,0,0],
             [0,0,0,0]
         ],
         [ // J
@@ -340,32 +371,6 @@
             [0,0,0]
         ]
     ];
-    
-    const EMPTYBOARD = [
-        [8,8,0,0,0,0,0,0,0,0,0,0,8,8],
-        [8,8,0,0,0,0,0,0,0,0,0,0,8,8],
-        [8,8,0,0,0,0,0,0,0,0,0,0,8,8],
-        [8,8,0,0,0,0,0,0,0,0,0,0,8,8],
-        [8,8,0,0,0,0,0,0,0,0,0,0,8,8],
-        [8,8,0,0,0,0,0,0,0,0,0,0,8,8],
-        [8,8,0,0,0,0,0,0,0,0,0,0,8,8],
-        [8,8,0,0,0,0,0,0,0,0,0,0,8,8],
-        [8,8,0,0,0,0,0,0,0,0,0,0,8,8],
-        [8,8,0,0,0,0,0,0,0,0,0,0,8,8],
-        [8,8,0,0,0,0,0,0,0,0,0,0,8,8],
-        [8,8,0,0,0,0,0,0,0,0,0,0,8,8],
-        [8,8,0,0,0,0,0,0,0,0,0,0,8,8],
-        [8,8,0,0,0,0,0,0,0,0,0,0,8,8],
-        [8,8,0,0,0,0,0,0,0,0,0,0,8,8],
-        [8,8,0,0,0,0,0,0,0,0,0,0,8,8],
-        [8,8,0,0,0,0,0,0,0,0,0,0,8,8],
-        [8,8,0,0,0,0,0,0,0,0,0,0,8,8],
-        [8,8,0,0,0,0,0,0,0,0,0,0,8,8],
-        [8,8,0,0,0,0,0,0,0,0,0,0,8,8],
-        [8,8,0,0,0,0,0,0,0,0,0,0,8,8],
-        [8,8,0,0,0,0,0,0,0,0,0,0,8,8],
-        [8,8,8,8,8,8,8,8,8,8,8,8,8,8],
-        [8,8,8,8,8,8,8,8,8,8,8,8,8,8]];
 
     init();
     
