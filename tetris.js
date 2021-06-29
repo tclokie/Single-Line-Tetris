@@ -199,7 +199,7 @@
     function deleteFullLines(top, length) {
         var end = Math.min(top+length, game.board.length-2);
         
-        var linesDeleted = 0;
+        var lineDeleted = false;
         
         for (var i = top; i < end; i++) {
             var flag = true;
@@ -208,30 +208,22 @@
                 flag = (game.board[i][j] > 0 && game.board[i][j] < 8);
             }
             
-            if (flag) { // delete line
-                for (var j = i; j > 0; j--) {
-                    game.board[j] = Array.apply(undefined, game.board[j-1]);
+            if (flag) {
+                if (!lineDeleted) { // delete line
+                    for (var j = i; j > 0; j--) {
+                        game.board[j] = Array.apply(undefined, game.board[j-1]);
+                    }
+                    game.board[0] = [8,8,0,0,0,0,0,0,0,0,0,0,8,8];
+                    game.lines++;
+                    lineDeleted = true;
+                } else { // multiple lines cleared; game over
+                    gameOver();
                 }
-                game.board[0] = [8,8,0,0,0,0,0,0,0,0,0,0,8,8];
-                game.lines++;
-                linesDeleted++;
             }
         }
         
-        switch (linesDeleted) {
-            case 0: break;
-            case 1:
-                game.speed *= 0.95;
-                break;
-            case 2:
-                game.speed *= 0.9;
-                break;
-            case 3:
-                game.speed *= 0.8;
-                break;
-            case 4:
-                game.speed *= 0.7;
-                break;
+        if (lineDeleted) {
+            game.speed *= 0.95;
         }
     }
     
@@ -321,16 +313,20 @@
                 case 32: // space
                     if (!game.pause) hardDrop();
                     break;
-                case 37: // left
+                case 37: // left arrow
+                case 65: // a
                     if (!game.pause) moveLeft();
                     break;
-                case 38: // up
+                case 38: // up arrow
+                case 87: // w
                     if (!game.pause) rotateCW();
                     break;
                 case 39: // right
+                case 68: // d
                     if (!game.pause) moveRight();
                     break;
                 case 40: // down
+                case 83: // s
                     if (!game.pause) softDrop();
                     break;
                 case 80: // p
