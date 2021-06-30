@@ -2,7 +2,7 @@
 An implementation of Tetris in pure JavaScript, using the HTML5 Canvas.
 The caveat is: you **lose** if you clear multiple lines at the same time.
 
-**Play it now at:** https://tclokie.github.io/WebTetris/
+**Play it now at:** https://tclokie.github.io/Single-Line-Tetris/
 
 # Instructions
 
